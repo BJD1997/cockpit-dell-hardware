@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+import json
+import subprocess
+import sys
+
+
+def run(cmd):
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def list_block_devices():
+    result = run(["lsblk", "-J", "-b", "-d", "-o", "NAME,TYPE,SIZE,MODEL,SERIAL,TRAN,VENDOR"])
+    if result.returncode != 0:
+        print(json.dumps({"error": result.stderr.strip() or "lsblk failed"}), file=sys.stderr)
+        sys.exit(1)
+    data = json.loads(result.stdout)
+    return [d for d in data.get("blockdevices", []) if d.get("type") == "disk"]
+
+
+def human_size(num_bytes):
+    if not num_bytes:
+        return "?"
+    size = float(num_bytes)
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if size < 1000 or unit == "TB":
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.2f} {unit}"
+        size /= 1000
+    return f"{size:.2f} TB"
+
+
+def smart_info(devpath):
+    # smartctl's exit code is a bitmask of warnings, not just pass/fail,
+    # so a non-zero return can still carry a fully usable JSON body.
+    result = run(["smartctl", "-a", "-j", devpath])
+    try:
+        return json.loads(result.stdout)
+    except (json.JSONDecodeError, ValueError):
+        return {}
+
+
+def get_ata_attr(table, attr_id):
+    for entry in table or []:
+        if entry.get("id") == attr_id:
+            return entry.get("raw", {}).get("value")
+    return None
+
+
+def build_disk_entry(dev):
+    devpath = "/dev/" + dev["name"]
+    smart = smart_info(devpath)
+
+    protocol = smart.get("device", {}).get("protocol", "")
+    rotation_rate = smart.get("rotation_rate", 0)
+    if protocol == "NVMe":
+        disk_type = "NVMe"
+    elif rotation_rate:
+        disk_type = "HDD"
+    else:
+        disk_type = "SSD"
+
+    health = "?"
+    if "smart_status" in smart:
+        health = "PASSED" if smart["smart_status"].get("passed") else "FAILED"
+
+    ata_table = smart.get("ata_smart_attributes", {}).get("table", [])
+    power_on_hours = (
+        smart.get("power_on_time", {}).get("hours")
+        if "power_on_time" in smart
+        else get_ata_attr(ata_table, 9)
+    )
+
+    vendor = dev.get("vendor") or smart.get("vendor") or "?"
+
+    return {
+        "bay-id": dev["name"],
+        "dev": devpath,
+        "occupied": True,
+        "disk_type": disk_type,
+        "transport": (dev.get("tran") or protocol or "?").upper(),
+        "vendor": vendor.strip() if isinstance(vendor, str) else "?",
+        "model-name": smart.get("model_name") or dev.get("model") or "?",
+        "serial": smart.get("serial_number") or dev.get("serial") or "?",
+        "capacity": human_size(int(dev["size"])) if dev.get("size") else "?",
+        "firm-ver": smart.get("firmware_version", "?"),
+        "rotation-rate": rotation_rate,
+        "health": health,
+        "temp-c": smart.get("temperature", {}).get("current"),
+        "power-on-time": power_on_hours,
+        "power-cycle-count": smart.get("power_cycle_count") or get_ata_attr(ata_table, 12),
+        "current-pending-sector": get_ata_attr(ata_table, 197),
+        "offline-uncorrectable": get_ata_attr(ata_table, 198),
+    }
+
+
+def main():
+    devices = list_block_devices()
+    rows = [build_disk_entry(dev) for dev in devices]
+    print(json.dumps({"rows": rows}, indent=4))
+
+
+if __name__ == "__main__":
+    main()

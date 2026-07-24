@@ -1,0 +1,11 @@
+{
+    "version": 0,
+
+    "menu": {
+        "dell-disks": {
+            "label": "Dell Disks",
+            "path": "index.html",
+        	"order": 112
+        }
+    }
+}
