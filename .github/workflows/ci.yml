@@ -1,0 +1,41 @@
+name: CI Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq moreutils
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Build all plugins
+        run: make
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cockpit-plugins-dist
+          path: |
+            45drives-disks/dist
+            45drives-motherboard/dist
+            45drives-system/dist
+            45drives-fan-controller/dist
+            dell-disks/dist
+          if-no-files-found: warn
