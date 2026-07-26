@@ -34,7 +34,6 @@ jobs:
           name: cockpit-plugins-dist
           path: |
             45drives-system/dist
-            45drives-fan-controller/dist
             dell-disks/dist
             dell-system/dist
           if-no-files-found: warn

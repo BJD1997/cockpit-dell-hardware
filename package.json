@@ -2,7 +2,6 @@
   "private": true,
   "workspaces": [
     "45drives-system",
-    "45drives-fan-controller",
     "dell-disks",
     "dell-system",
     "houston-common",
@@ -11,11 +10,9 @@
   "scripts": {
     "build:common": "yarn workspace @45drives/houston-common run build:common",
     "build:system": "yarn workspace 45drives-system run build",
-    "build:fan-controller": "yarn workspace 45drives-fan-controller run build",
     "build:dell-disks": "yarn workspace dell-disks run build",
     "build:dell-system": "yarn workspace dell-system run build",
-    "deploy:fan-controller": "yarn build:fan-controller && cp -af 45drives-fan-controller/dist/* $HOME/.local/share/cockpit/45drives-fan-controller-test/ && mkdir -p /usr/share/cockpit/45drives-fan-controller/scripts && cp -af 45drives-fan-controller/public/scripts/* /usr/share/cockpit/45drives-fan-controller/scripts/ && chmod +x /usr/share/cockpit/45drives-fan-controller/scripts/*",
-    "build": "yarn build:common && yarn build:system && yarn build:fan-controller && yarn build:dell-disks && yarn build:dell-system"
+    "build": "yarn build:common && yarn build:system && yarn build:dell-disks && yarn build:dell-system"
   },
   "packageManager": "yarn@4.17.1"
 }
