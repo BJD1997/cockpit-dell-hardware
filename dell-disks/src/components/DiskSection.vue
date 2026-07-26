@@ -9,12 +9,19 @@
     >
       <div
         id="diskInfoTable"
-        v-if="currentDisk && diskObj['bay-id']"
+        v-if="currentDisk && diskObj['id']"
         class="grid grid-cols-2 2xl:grid-cols-3 grid-flow-row-dense grow"
       >
         <div class="grid grid-cols-1 self-start py-1 md:py-2 px-2">
           <div class="text-sm text-muted">Device</div>
-          <div class="text-sm break-words">{{ diskObj["bay-id"] }}</div>
+          <div class="text-sm break-words">{{ diskObj["id"] }}</div>
+        </div>
+        <div
+          v-if="diskObj['bay-id'] !== null && diskObj['bay-id'] !== undefined"
+          class="grid grid-cols-1 self-start py-1 md:py-2 px-2"
+        >
+          <div class="text-sm text-muted">Bay</div>
+          <div class="text-sm break-words">Bay {{ diskObj["bay-id"] }}</div>
         </div>
         <div v-if="diskObj['dev']" class="grid grid-cols-1 self-start py-1 md:py-2 px-2">
           <div class="text-sm text-muted">Device Path</div>
@@ -150,7 +157,7 @@ export default {
 
     const updateDiskObj = () => {
       if (!currentDisk.value || !diskInfo.rows) return;
-      const tmpObj = diskInfo.rows.find((slot) => slot["bay-id"] === currentDisk.value);
+      const tmpObj = diskInfo.rows.find((slot) => slot["id"] === currentDisk.value);
       if (!tmpObj) {
         console.log(`Unable to find info for disk "${currentDisk.value}"`);
         return;

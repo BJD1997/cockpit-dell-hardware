@@ -120,7 +120,7 @@
             v-for="(bay, i) in bays"
             :key="bay.label"
             :transform="`translate(${bayXOffsets[i]} 178) scale(1 .75)`"
-            @click="bay.disk && (currentDisk = bay.disk['bay-id'])"
+            @click="bay.disk && (currentDisk = bay.disk['id'])"
             :class="bay.disk ? 'cursor-pointer' : ''"
           >
             <path :d="bayPath" :fill="bay.disk ? 'url(#bay)' : '#14161a'" class="stroke" />
@@ -180,7 +180,12 @@
         </g>
       </svg>
       <div class="text-xs text-muted text-center max-w-3xl">
-        Bay order reflects OS device enumeration order, not a verified physical slot mapping.
+        <template v-if="bayMappingVerified">
+          Bay order derived from the drive backplane's SCSI topology.
+        </template>
+        <template v-else>
+          No drive backplane detected — bay order falls back to OS device enumeration order, not a verified physical slot mapping.
+        </template>
       </div>
     </div>
   </div>
@@ -203,6 +208,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    bayMappingVerified: {
+      type: Boolean,
+      default: false,
+    },
     serverInfo: {
       type: Object,
       default: () => ({}),
@@ -215,11 +224,11 @@ export default {
     const bays = computed(() =>
       Array.from({ length: BAY_COUNT }, (_, i) => ({
         label: `Bay ${i}`,
-        disk: props.rows[i] ?? null,
+        disk: props.rows.find((d) => d["bay-id"] === i) ?? null,
       }))
     );
 
-    const isSelected = (bay) => !!bay.disk && currentDisk.value === bay.disk["bay-id"];
+    const isSelected = (bay) => !!bay.disk && currentDisk.value === bay.disk["id"];
 
     const modelLabel = computed(() => props.serverInfo?.Model || "PowerEdge R330");
 

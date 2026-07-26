@@ -157,6 +157,7 @@ export default {
         <div class="grow grid gap-well col-span-6 lg:col-span-3">
           <ChassisFront
             :rows="diskInfo.rows ?? []"
+            :bayMappingVerified="diskInfo['bay-mapping-verified'] ?? false"
             :serverInfo="preloadChecks.serverInfo.content"
             @refresh="refresh"
           />

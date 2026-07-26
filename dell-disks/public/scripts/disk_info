@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
+import glob
 import json
+import os
+import re
 import subprocess
 import sys
 
@@ -45,7 +48,34 @@ def get_ata_attr(table, attr_id):
     return None
 
 
-def build_disk_entry(dev):
+def get_enclosure_host():
+    """
+    SCSI host number of the drive backplane's SES enclosure, if one is
+    present (e.g. /sys/class/enclosure/0:0:32:0 -> host 0). Used to tell
+    real hot-swap bay drives apart from unrelated block devices (onboard
+    boot drives, USB, etc) living on a different SCSI host.
+    """
+    for encl in glob.glob("/sys/class/enclosure/*"):
+        m = re.match(r"^(\d+):", os.path.basename(encl))
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def get_scsi_address(devname):
+    """(host, channel, target, lun) for a block device, or None if it isn't
+    a SCSI-addressed device (e.g. NVMe)."""
+    device_link = f"/sys/block/{devname}/device"
+    if not os.path.islink(device_link):
+        return None
+    real = os.path.realpath(device_link)
+    m = re.search(r"/(\d+):(\d+):(\d+):(\d+)$", real)
+    if not m:
+        return None
+    return tuple(int(x) for x in m.groups())
+
+
+def build_disk_entry(dev, bay_id):
     devpath = "/dev/" + dev["name"]
     smart = smart_info(devpath)
 
@@ -72,7 +102,8 @@ def build_disk_entry(dev):
     vendor = dev.get("vendor") or smart.get("vendor") or "?"
 
     return {
-        "bay-id": dev["name"],
+        "id": dev["name"],
+        "bay-id": bay_id,
         "dev": devpath,
         "occupied": True,
         "disk_type": disk_type,
@@ -94,8 +125,26 @@ def build_disk_entry(dev):
 
 def main():
     devices = list_block_devices()
-    rows = [build_disk_entry(dev) for dev in devices]
-    print(json.dumps({"rows": rows}, indent=4))
+    enclosure_host = get_enclosure_host()
+
+    rows = []
+    for dev in devices:
+        addr = get_scsi_address(dev["name"])
+        if enclosure_host is not None and addr is not None and addr[0] == enclosure_host:
+            # Target ID on the backplane's own SCSI host = physical bay
+            # index. This backplane's SES firmware doesn't expose a
+            # device-identity link for the slot (Additional Element
+            # Status page unsupported), but on a direct-attached
+            # non-expander backplane like this, bay wiring maps 1:1 to
+            # target ID.
+            bay_id = addr[2]
+        else:
+            # Not on the enclosure's SCSI host - e.g. an onboard boot
+            # drive, not a front hot-swap bay. Leave out of the bay view.
+            bay_id = None
+        rows.append(build_disk_entry(dev, bay_id))
+
+    print(json.dumps({"rows": rows, "bay-mapping-verified": enclosure_host is not None}, indent=4))
 
 
 if __name__ == "__main__":
