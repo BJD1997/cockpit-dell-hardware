@@ -155,7 +155,11 @@ export default {
     >
       <div class="gap-well grid grid-cols-6">
         <div class="grow grid gap-well col-span-6 lg:col-span-3">
-          <ChassisFront :rows="diskInfo.rows ?? []" @refresh="refresh" />
+          <ChassisFront
+            :rows="diskInfo.rows ?? []"
+            :serverInfo="preloadChecks.serverInfo.content"
+            @refresh="refresh"
+          />
         </div>
 
         <div class="grow grid gap-well col-span-6 lg:col-span-3">
