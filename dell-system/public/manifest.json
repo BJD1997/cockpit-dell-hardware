@@ -1,0 +1,12 @@
+{
+    "version": 0,
+
+    "menu": {
+        "dell-system": {
+            "label": "Dell System",
+            "path": "index.html",
+        	"order": 111
+        }
+    },
+    "preload": ["index"]
+}
