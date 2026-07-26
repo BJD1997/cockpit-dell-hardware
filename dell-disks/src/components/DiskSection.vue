@@ -21,7 +21,18 @@
           class="grid grid-cols-1 self-start py-1 md:py-2 px-2"
         >
           <div class="text-sm text-muted">Bay</div>
-          <div class="text-sm break-words">Bay {{ diskObj["bay-id"] }}</div>
+          <div class="text-sm break-words flex items-center gap-2">
+            Bay {{ diskObj["bay-id"] }}
+            <button
+              type="button"
+              :disabled="locating === 'busy'"
+              @click="toggleLocate"
+              class="text-xs rounded px-2 py-0.5 border border-default hover:bg-accent disabled:opacity-50"
+              :class="locating === 'on' ? 'text-amber-600 dark:text-amber-400 border-amber-500' : 'text-muted'"
+            >
+              {{ locating === "on" ? "Stop Blinking" : "Blink LED" }}
+            </button>
+          </div>
         </div>
         <div v-if="diskObj['dev']" class="grid grid-cols-1 self-start py-1 md:py-2 px-2">
           <div class="text-sm text-muted">Device Path</div>
@@ -147,6 +158,9 @@
 
 <script>
 import { ref, watch, inject, reactive } from "vue";
+import { legacy } from "@45drives/houston-common-lib";
+const { useSpawn, errorStringHTML } = legacy;
+import { pushNotification, Notification } from "@45drives/houston-common-ui";
 
 export default {
   setup() {
@@ -154,6 +168,7 @@ export default {
     const diskInfo = inject("diskInfo");
     const wMsg = ref("Click on a disk for more detail.");
     const diskObj = reactive({});
+    const locating = ref("off"); // "off" | "on" | "busy"
 
     const updateDiskObj = () => {
       if (!currentDisk.value || !diskInfo.rows) return;
@@ -165,14 +180,46 @@ export default {
       Object.assign(diskObj, tmpObj);
     };
 
-    watch(currentDisk, updateDiskObj);
+    watch(currentDisk, () => {
+      locating.value = "off";
+      updateDiskObj();
+    });
     watch(diskInfo, updateDiskObj);
+
+    const toggleLocate = async () => {
+      if (diskObj["bay-id"] === null || diskObj["bay-id"] === undefined) return;
+      const nextState = locating.value === "on" ? "off" : "on";
+      locating.value = "busy";
+      try {
+        await useSpawn(
+          [
+            "/usr/share/cockpit/dell-disks/scripts/disk_locate",
+            String(diskObj["bay-id"]),
+            nextState,
+          ],
+          { err: "out", superuser: "require" }
+        ).promise();
+        locating.value = nextState;
+      } catch (error) {
+        console.log(error);
+        locating.value = locating.value === "busy" ? "off" : locating.value;
+        pushNotification(
+          new Notification(
+            "Unable to set locate LED",
+            errorStringHTML(error),
+            "error"
+          )
+        );
+      }
+    };
 
     return {
       wMsg,
       currentDisk,
       diskObj,
       diskInfo,
+      locating,
+      toggleLocate,
     };
   },
 };

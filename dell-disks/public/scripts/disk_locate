@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+import argparse
+import glob
+import os
+import re
+import sys
+
+
+def get_enclosure_path():
+    for encl in glob.glob("/sys/class/enclosure/*"):
+        if re.match(r"^\d+:", os.path.basename(encl)):
+            return encl
+    return None
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("bay", type=int, help="Physical bay number")
+    parser.add_argument("state", choices=["on", "off"], help="Locate LED state")
+    args = parser.parse_args()
+
+    encl_path = get_enclosure_path()
+    if not encl_path:
+        print("No drive enclosure (SES) found on this system.", file=sys.stderr)
+        sys.exit(1)
+
+    locate_path = os.path.join(encl_path, str(args.bay), "locate")
+    if not os.path.exists(locate_path):
+        print(f"No locate control found for bay {args.bay}.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with open(locate_path, "w") as f:
+            f.write("1" if args.state == "on" else "0")
+    except OSError as e:
+        print(f"Failed to set locate LED: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print("ok")
+
+
+if __name__ == "__main__":
+    main()
