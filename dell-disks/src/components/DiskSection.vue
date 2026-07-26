@@ -1,5 +1,5 @@
 <template>
-  <div id="diskInfoCard" class="card self-stretch flex-auto flex flex-col">
+  <div id="diskInfoCard" class="card self-stretch flex-auto flex flex-col min-h-[22rem]">
     <div class="card-header">
       <h3 class="text-header text-default">Disk Information</h3>
     </div>

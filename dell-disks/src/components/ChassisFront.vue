@@ -168,10 +168,11 @@
             v-for="(bay, i) in bays"
             :key="`label-${bay.label}`"
             :x="bayXOffsets[i] + 305"
-            y="345"
+            y="350"
             text-anchor="middle"
-            fill="#c9ced5"
-            style="font-size: 26px"
+            fill="currentColor"
+            class="text-default"
+            style="font-size: 46px; font-weight: 600"
           >{{ bay.label }}{{ bay.disk && bay.disk.health === 'FAILED' ? ' — FAILED' : '' }}{{ !bay.disk ? ' — empty' : '' }}</text>
 
           <path d="M230 169h2395M230 310h2395" stroke="#07080a" stroke-width="5" opacity=".9" />
